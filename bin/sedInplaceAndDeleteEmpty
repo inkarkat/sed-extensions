@@ -18,7 +18,7 @@ do
 	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
 	--in-place|--in-place=*|-i)
 			sedInplaceArgs=("$1"); shift;;
-	--)		sedArgs+=("$1"); shift; sedFiles=("$@"); break;;
+	--)		shift; sedFiles=("$@"); break;;
 	*)		sedArgs+=("$1"); shift;;
     esac
 done
@@ -36,19 +36,11 @@ if [ ${#sedFiles[@]} -eq 0 ]; then
     done
 fi
 if [ ${#sedFiles[@]} -eq 0 ]; then
-    echo >&2 'ERROR: No FILE(s) passed.'
-    echo >&2
-    printUsage "$0" >&2
+    echo 'ERROR: No FILE(s) passed.'
+    echo
+    printUsage "$0"
     exit 2
-fi
+fi >&2
 
-sed "${sedInplaceArgs[@]}" "${sedArgs[@]}" "${sedFiles[@]}" || exit $?
-
-status=0
-for filespec in "${sedFiles[@]}"
-do
-    if [ -e "$filespec" -a ! -s "$filespec" ]; then
-	rm --force -- "$filespec" || status=$?
-    fi
-done
-exit $status
+printf -v quotedSedCommand '%q ' sed "${sedInplaceArgs[@]}" "${sedArgs[@]}"; quotedSedCommand="${quotedSedCommand% }"
+exec processFilesAndDeleteEmpty --command "$quotedSedCommand" -- "${sedFiles[@]}"
