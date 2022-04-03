@@ -1,0 +1,26 @@
+#!/bin/bash
+set -o pipefail
+
+printUsage()
+{
+    cat <<HELPTEXT
+Filter filespecs from standard input by printing (some of their) filespecs to
+standard output.
+The SED-SCRIPT must use the "F" command on accepted files. (It can do this
+multiple times; the results are made unique.)
+Exits 1 if no file is accepted at all.
+HELPTEXT
+    echo
+    printf 'Usage: grep --files-with-matches ... | %q %s\n' "$(basename "$1")" 'SED-ARGUMENTS [...]'
+}
+case "$1" in
+    --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+esac
+if [ $# -eq 0 ]; then
+    printUsage "$0" >&2
+    exit 2
+fi
+
+xargs --delimiter '\n' --no-run-if-empty sed --quiet --separate "$@" | \
+    outputOrError | \
+    uniq

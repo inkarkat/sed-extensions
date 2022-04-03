@@ -1,0 +1,15 @@
+#!/bin/bash
+
+printUsage()
+{
+    cat <<HELPTEXT
+Edit filespecs from standard input, e.g. for use in a pipeline.
+HELPTEXT
+    echo
+    printf 'Usage: grep --files-with-matches ... | %q %s\n' "$(basename "$1")" 'SED-ARGUMENTS [...]'
+}
+case "$1" in
+    --help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+esac
+
+exec xargs --delimiter '\n' --no-run-if-empty sed "$@"
