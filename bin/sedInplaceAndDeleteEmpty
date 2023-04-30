@@ -11,20 +11,21 @@ HELPTEXT
 
 typeset -a sedInplaceArgs=(-i)
 typeset -a sedArgs=()
-typeset -a sedFiles=()
+unset sedFiles
 while [ $# -ne 0 ]
 do
     case "$1" in
 	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
 	--in-place|--in-place=*|-i)
 			sedInplaceArgs=("$1"); shift;;
-	--)		shift; sedFiles=("$@"); break;;
+	--)		shift; typeset -a sedFiles=("$@"); break;;
 	*)		sedArgs+=("$1"); shift;;
     esac
 done
-if [ ${#sedFiles[@]} -eq 0 ]; then
+if [ -z "${sedFiles+t}" ]; then
     # No files after -- captured yet; need to investigate parsed and
     # remaining args from behind for files.
+    typeset -a sedFiles=()
     sedArgs+=("$@")
     while [ ${#sedArgs[@]} -ne 0 ]
     do
