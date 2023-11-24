@@ -1,0 +1,70 @@
+#!/bin/bash
+
+printUsage()
+{
+    cat <<HELPTEXT
+Edit FILEs in place although the directory containing the FILE is not writable.
+(sed always creates the temp file in the same directory as the input file.)
+A backup is only made if it can be written to, else ignored.
+HELPTEXT
+    echo
+    printf 'Usage: %q %s\n' "$(basename "$1")" 'SED-ARGUMENTS [...] [-i[SUFFIX]|--in-place[=SUFFIX]] [--] FILE [...] [-?|-h|--help]'
+}
+
+typeset -a sedArgs=()
+unset sedFiles
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+	-i|--in-place)	shift;;
+	-i?*|--in-place=*)
+			inPlaceExtension="${1#-i}"; inPlaceExtension="${inPlaceExtension#--in-place=}"; shift;;
+	--)		shift; typeset -a sedFiles=("$@"); break;;
+	*)		sedArgs+=("$1"); shift;;
+    esac
+done
+if [ -z "${sedFiles+t}" ]; then
+    # No files after -- captured yet; need to investigate parsed and
+    # remaining args from behind for files.
+    typeset -a sedFiles=()
+    sedArgs+=("$@")
+    while [ ${#sedArgs[@]} -ne 0 ]
+    do
+	lastArg="${sedArgs[-1]}"
+	[ -e "$lastArg" ] || break
+
+	sedFiles=("$lastArg" "${sedFiles[@]}")
+	sedArgs=("${sedArgs[@]:0:${#sedArgs[@]}-1}")
+    done
+fi
+if [ ${#sedFiles[@]} -eq 0 ]; then
+    echo 'ERROR: No FILE(s) passed.'
+    echo
+    printUsage "$0"
+    exit 2
+fi >&2
+
+tempFilespec="$(mktemp --tmpdir "$(basename -- "$0")-XXXXXX" 2>/dev/null || echo "${TMPDIR:-/tmp}/$(basename -- "$0").$$$RANDOM")"
+[ "${DEBUG:-}" ] || trap 'rm -f -- "$tempFilespec" 2>/dev/null' EXIT
+
+overwrite()
+{
+    # Note: Cannot use cp / mv as that re-creates the file which is not allowed
+    # if there's no write permission on the directory.
+    cat -- "${1:?}" > "${2:?}"
+}
+
+for filespec in "${sedFiles[@]}"
+do
+    sed "${sedArgs[@]}" -- "$filespec" > "$tempFilespec" || exit $?
+    if [ -n "$inPlaceExtension" ]; then
+	backupFilespec="${filespec}${inPlaceExtension}"
+	if [ -w "$backupFilespec" ] || [ ! -e "$backupFilespec" -a -w "$(dirname -- "$backupFilespec")" ]; then
+	    overwrite "$filespec" "$backupFilespec"
+	else
+	    printf >&2 'Warning: Cannot write backup file %s\n' "$backupFilespec"
+	fi
+    fi
+    overwrite "$tempFilespec" "$filespec"
+done
