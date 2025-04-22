@@ -1,0 +1,51 @@
+#!/bin/bash
+shopt -qs extglob
+
+printUsage()
+{
+    cat <<HELPTEXT
+Replace every occurrence of FROM-TEXT with TO-TEXT (in the order of the given
+arguments).
+HELPTEXT
+    echo
+    printf 'Usage: %q %s\n' "$(basename "$1")" '[-i[SUFFIX]|--in-place[=SUFFIX]] (-e|--from-to FROM-TEXT TO-TEXT) [-e ...] [--] [FILE ...] [-?|-h|--help]'
+    printf 'Usage: cat FILE [...] | %q %s\n' "$(basename "$1")" '(-e|--from-to FROM-TEXT TO-TEXT) [-e ...]'
+}
+
+typeset -a sedArgs=()
+typeset -a sedSubstitutions=()
+while [ $# -ne 0 ]
+do
+    case "$1" in
+	--help|-h|-\?)	shift; printUsage "$0"; exit 0;;
+	-i*|--in-place?(=*))
+			sedArgs+=("$1"); shift;;
+	--from-to|-e)	shift
+			literalPattern="${1:?}"; shift
+			literalPattern="${literalPattern//\\/\\\\}"
+			literalPattern="${literalPattern//\[/\\\[}"
+			literalPattern="${literalPattern//\]/\\\]}"
+			literalPattern="${literalPattern//\$/\\\$}"
+			literalPattern="${literalPattern//\*/\\\*}"
+			literalPattern="${literalPattern//./\\.}"
+			literalPattern="${literalPattern//^/\\^}"
+
+			literalReplacement="${1?}"; shift
+			literalReplacement="${literalReplacement//\\/\\\\}"
+			literalReplacement="${literalReplacement//&/\\&}"
+
+			sedSubstitutions+=(-e "s#${literalPattern//#/\\#}#${literalReplacement//#/\\#}#g")
+			;;
+	--)		shift; break;;
+	-)		break;; # For supporting special - FILE without prior --
+	-*)		{ echo "ERROR: Unknown option \"$1\"!"; echo; printUsage "$0"; } >&2; exit 2;;
+	*)		break;;
+    esac
+done
+if [ ${#sedSubstitutions[@]} -eq 0 ]; then
+    echo 'ERROR: No -e|--from-to FROM-TEXT TO-TEXT passed.'
+    echo
+    printUsage "$0"
+    exit 2
+fi >&2
+exec sed "${sedArgs[@]}" "${sedSubstitutions[@]}" "$@"
