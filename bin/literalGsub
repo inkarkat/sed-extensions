@@ -22,6 +22,10 @@ do
 			sedArgs+=("$1"); shift;;
 	--from-to|-e)	shift
 			literalPattern="${1:?}"; shift
+			if [[ "$literalPattern" =~ $'\n' ]]; then
+			    echo >&2 'ERROR: FROM-TEXT must not contain newlines.'
+			    exit 2
+			fi
 			literalPattern="${literalPattern//\\/\\\\}"
 			literalPattern="${literalPattern//\[/\\\[}"
 			literalPattern="${literalPattern//\]/\\\]}"
@@ -33,6 +37,7 @@ do
 			literalReplacement="${1?}"; shift
 			literalReplacement="${literalReplacement//\\/\\\\}"
 			literalReplacement="${literalReplacement//&/\\&}"
+			literalReplacement="${literalReplacement//$'\n'/\\n}"
 
 			sedSubstitutions+=(-e "s#${literalPattern//#/\\#}#${literalReplacement//#/\\#}#g")
 			;;
