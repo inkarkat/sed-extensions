@@ -46,7 +46,7 @@ if [ ${#sedFiles[@]} -eq 0 ]; then
 fi >&2
 
 tempFilespec="$(mktemp --tmpdir "$(basename -- "$0")-XXXXXX" 2>/dev/null || echo "${TMPDIR:-/tmp}/$(basename -- "$0").$$$RANDOM")"
-[ "${DEBUG:-}" ] || trap 'rm -f -- "$tempFilespec" 2>/dev/null' EXIT
+! ${DEBUG:+debugenabled --invert-match --} ${DEBUG:-:} || trap 'rm -f -- "$tempFilespec" 2>/dev/null' EXIT
 
 overwrite()
 {
