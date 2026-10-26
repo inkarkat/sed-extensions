@@ -1,5 +1,7 @@
 #!/bin/bash
 
+${DEBUG:+eval $(debugtrace -o $- -- "$@")}
+
 printUsage()
 {
     cat <<HELPTEXT
@@ -54,6 +56,8 @@ overwrite()
     # if there's no write permission on the directory.
     cat -- "${1:?}" > "${2:?}"
 }
+
+${DEBUG:+eval $(debugtrace --point main -o $- --)}
 
 for filespec in "${sedFiles[@]}"
 do
